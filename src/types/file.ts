@@ -1,15 +1,17 @@
 export interface FileItem {
   id: string;
-  item_id?: string;
   name: string;
+  type: 'video' | 'audio' | 'image' | 'document' | 'other';
   size: number;
-  type: string;
-  ctime: number;
-  utime: number;
-  url?: string;
-  pid: number;
-  driveName?: string;
-  driveToken?: string;
+  url: string;
+  thumbnail?: string;
+  duration?: string;
+  views?: number;
+  rating?: number;
+  description?: string;
+  lastUpdated: string;
+  utime?: number;
+  ctime?: number;
 }
 
 export interface FileListResponse {

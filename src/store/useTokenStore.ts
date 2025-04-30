@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface TokenInfo {
+export interface TokenInfo {
   token: string;
   nickname: string;
   uid: number;

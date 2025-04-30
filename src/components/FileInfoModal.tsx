@@ -4,6 +4,7 @@ import { XMarkIcon, DocumentIcon, CloudArrowDownIcon, ShareIcon, CheckIcon } fro
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileItem } from '@/types/file';
 import { formatBytes, formatDate } from '@/utils/format';
+import { formatTitle } from '@/utils/formatters';
 import { DownloadProgress } from './DownloadProgress';
 import { MediaPlayer } from './MediaPlayer';
 
@@ -105,8 +106,11 @@ export function FileInfoModal({ file, isOpen, onClose, onDownload }: FileInfoMod
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <Dialog.Title as="h3" className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                        {file.name}
+                      <Dialog.Title
+                        as="h3"
+                        className="text-lg font-medium leading-6 text-gray-900 dark:text-white"
+                      >
+                        {formatTitle(file.name)}
                       </Dialog.Title>
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {formatBytes(file.size)}

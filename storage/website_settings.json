@@ -1,0 +1,24 @@
+{
+  "title": "My Video Streaming App",
+  "description": "A Netflix-style video streaming platform.",
+  "keywords": "video, streaming, movies, tv, netflix",
+  "logo": "/logo.png",
+  "favicon": "/favicon.ico",
+  "ads": {
+    "header": "",
+    "sidebar": "",
+    "footer": ""
+  },
+  "seoTitle": "My Video Streaming App",
+  "seoDescription": "A Netflix-style video streaming platform.",
+  "seoKeywords": "video, streaming, movies, tv, netflix",
+  "seoImage": "/seo-image.png",
+  "seoRobots": "index, follow",
+  "seoCanonical": "https://myapp.com/",
+  "seoOgTitle": "My Video Streaming App",
+  "seoOgDescription": "A Netflix-style video streaming platform.",
+  "seoOgImage": "/og-image.png",
+  "seoTwitterTitle": "My Video Streaming App",
+  "seoTwitterDescription": "A Netflix-style video streaming platform.",
+  "seoTwitterImage": "/twitter-image.png"
+} 

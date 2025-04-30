@@ -8,9 +8,11 @@ import {
   ArrowDownTrayIcon,
   ShareIcon,
   DocumentDuplicateIcon,
-  HomeIcon
+  HomeIcon,
+  ClipboardIcon
 } from '@heroicons/react/24/outline';
 import { formatBytes, formatDate } from '@/utils/format';
+import { formatTitle } from '@/utils/formatters';
 import { useRouter } from 'next/navigation';
 
 interface FileDetailsProps {
@@ -49,14 +51,16 @@ export function FileDetails({ file, onDownload, onShare }: FileDetailsProps) {
                 <DocumentIcon className="h-8 w-8 text-white" />
               </motion.div>
               <div className="min-w-0">
-                <motion.h2 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent truncate"
-                >
-                  {file.name}
-                </motion.h2>
+                <div className="text-lg font-semibold mb-2 flex items-center gap-2">
+                  {formatTitle(file.name)}
+                  <button
+                    onClick={() => navigator.clipboard.writeText(file.name)}
+                    className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                    title="Copy original filename"
+                  >
+                    <ClipboardIcon className="w-4 h-4" />
+                  </button>
+                </div>
                 <motion.p 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}

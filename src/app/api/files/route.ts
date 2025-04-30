@@ -46,12 +46,12 @@ async function loginToAccount(email: string, password: string, clientIP: string)
   return data.data;
 }
 
-async function getFileList(token: string, pid: string = "0", filterSearch: string = "", clientIP: string) {
+async function getFileList(token: string, pid: string = "0", filterSearch: string = "", clientIP: string, sortField: string = 'utime', sortAsc: string = '0', pageSize: string = '20') {
   const params = new URLSearchParams({
-    sortField: 'utime',
-    sortAsc: '0',
+    sortField,
+    sortAsc,
     pageNo: '1',
-    pageSize: '9999',
+    pageSize,
     isVip: 'true',
     verc: '15004001',
     pid,
@@ -78,11 +78,11 @@ async function getFileList(token: string, pid: string = "0", filterSearch: strin
   return data.data;
 }
 
-async function fetchDriveData(driveName: string, account: { email: string; password: string }, pid: string, filterSearch: string, clientIP: string) {
+async function fetchDriveData(driveName: string, account: { email: string; password: string }, pid: string, filterSearch: string, clientIP: string, sortField: string = 'utime', sortAsc: string = '0', pageSize: string = '20') {
   try {
     console.log(`Fetching data for ${driveName}...`);
     const loginData = await loginToAccount(account.email, account.password, clientIP);
-    const fileData = await getFileList(loginData.token, pid, filterSearch, clientIP);
+    const fileData = await getFileList(loginData.token, pid, filterSearch, clientIP, sortField, sortAsc, pageSize);
 
     return {
       files: fileData.list.map((file: any) => ({
@@ -112,16 +112,27 @@ async function fetchDriveData(driveName: string, account: { email: string; passw
   }
 }
 
+// Add CORS headers to the response
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return response;
+}
+
 export async function GET(request: Request) {
   try {
     const clientIP = getClientIP();
     const { searchParams } = new URL(request.url);
     const filterSearch = searchParams.get('search') || '';
     const pid = searchParams.get('pid') || '0';
+    const sortField = searchParams.get('sort') || 'utime';
+    const sortAsc = searchParams.get('order') === 'asc' ? '1' : '0';
+    const limit = searchParams.get('limit') || '20';
 
     // Fetch all drives in parallel
     const drivePromises = Object.entries(storageConfig).map(([driveName, account]) => 
-      fetchDriveData(driveName, account, pid, filterSearch, clientIP)
+      fetchDriveData(driveName, account, pid, filterSearch, clientIP, sortField, sortAsc, limit)
     );
 
     const driveResults = await Promise.all(drivePromises);
@@ -143,10 +154,10 @@ export async function GET(request: Request) {
       }
     });
 
-    // Sort files by modification time
-    allFiles.sort((a, b) => b.utime - a.utime);
+    // Sort files by modification time with proper type checking
+    allFiles.sort((a, b) => (b.utime || 0) - (a.utime || 0));
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         list: allFiles,
@@ -158,11 +169,20 @@ export async function GET(request: Request) {
         tokens
       }
     });
+
+    return addCorsHeaders(response);
   } catch (error) {
     console.error('Files fetch error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
+    return addCorsHeaders(response);
   }
+}
+
+// Add OPTIONS handler for CORS preflight requests
+export async function OPTIONS(request: Request) {
+  const response = new NextResponse(null, { status: 204 });
+  return addCorsHeaders(response);
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, XMarkIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatBytes, formatDate } from '@/utils/format';
+import { formatTitle } from '@/utils/formatters';
 import type { FileItem } from '@/types/file';
 
 interface SearchBarProps {
@@ -161,10 +162,10 @@ export function SearchBar({ value, onChange, onOpenChange, files, onFileClick }:
                               <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg p-2">
                                 <DocumentIcon className="h-6 w-6 text-white" />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                  {file.name}
-                                </p>
+                              <div className="flex-1 truncate">
+                                <div className="font-medium text-gray-900 dark:text-white truncate">
+                                  {formatTitle(file.name)}
+                                </div>
                                 <div className="flex items-center space-x-4 mt-1">
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
                                     {formatBytes(file.size)}

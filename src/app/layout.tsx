@@ -1,6 +1,7 @@
 import './globals.css';
 import { Metadata } from 'next';
 import { Providers } from '@/components/Providers';
+import { BannerAdPlaceholder } from '@/components/BannerAdPlaceholder';
 
 export const metadata: Metadata = {
   title: 'JemPH Cloud',
@@ -20,10 +21,14 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
-      <body className="transition-colors duration-200">
+      <body className="transition-colors duration-200 bg-[#141414]">
+        <BannerAdPlaceholder />
         <Providers>
           {children}
         </Providers>
+        <div className="fixed bottom-0 left-0 w-full z-50">
+          <BannerAdPlaceholder />
+        </div>
       </body>
     </html>
   );

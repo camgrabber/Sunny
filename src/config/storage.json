@@ -1,22 +1,10 @@
 {
-  "Cloud Drive 1": {
+  "Cloud Drive": {
     "email": "sunny.fbook1@gmail.com",
     "password": "Sunny@7869"
   },
-  "Cloud Drive 2": {
-    "email": "sunny.fbook1@gmail.com",
-    "password": "Sunny@78b69"
-  },
-  "Cloud Drive 3": {
-    "email": "sunny.fbook1@gmail.com",
-    "password": "Sunny@786n9"
-  },
-  "Cloud Drive 4": {
-    "email": "sunny.fbook1@gmail.com",
-    "password": "Sunny@78g69"
-  },
-  "Cloud Drive 5": {
-    "email": "sunny.fbook1@gmail.com",
-    "password": "Sunny@78h69"
+  "sunny": {
+    "email": "sunny.fbook2@gmail.com",
+    "password": "admin123"
   }
 }

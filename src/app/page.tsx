@@ -1,316 +1,302 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { SearchBar } from '@/components/SearchBar';
-import { FileList } from '@/components/FileList';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Pagination } from '@/components/Pagination';
-import { FileListSkeleton } from '@/components/FileListSkeleton';
-import { FileInfoModal } from '@/components/FileInfoModal';
-import { LoadingScreen } from '@/components/LoadingScreen';
-import { StorageDisplay } from '@/components/StorageDisplay';
-import { HeaderDropdown } from '@/components/HeaderDropdown';
-import { Breadcrumb } from '@/components/Breadcrumb';
-import { ChartBarIcon } from '@heroicons/react/24/outline';
-import type { FileItem } from '@/types/file';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { useTokenStore } from '@/store/useTokenStore';
-import { DownloadProgress } from '@/components/DownloadProgress';
+import { useState, useEffect } from "react";
+import { VideoThumbnail } from "@/components/VideoThumbnail";
+import { 
+  PlayIcon, 
+  StarIcon, 
+  ClockIcon, 
+  FireIcon,
+  FilmIcon,
+  InformationCircleIcon
+} from "@heroicons/react/24/solid";
+import { useTokenStore, TokenInfo } from '@/store/useTokenStore';
+import { MediaPlayer } from "@/components/MediaPlayer";
+import { motion, AnimatePresence } from "framer-motion";
+import { NetflixCard } from "@/components/NetflixCard";
+import { theme } from "@/styles/theme";
+import type { FileItem } from "@/types/file";
+import { formatTitle } from '@/utils/formatters';
+import { AdPlaceholder } from '@/components/AdPlaceholder';
+import Link from 'next/link';
 
-interface StorageInfo {
-  total: number;
-  used: number;
-  drives: Record<string, {
-    used: number;
-    total: number;
-    nickname: string;
-  }>;
-}
+const VIDEOS_PER_SECTION = 6;
 
-interface FolderPath {
-  id: string;
-  name: string;
-  driveToken?: string;
-}
+const VideoSection = ({ 
+  title, 
+  videos = [],
+  icon: Icon,
+  onVideoSelect,
+  isLoading,
+  error,
+  viewMoreHref
+}: { 
+  title: string, 
+  videos: FileItem[],
+  icon: typeof PlayIcon,
+  onVideoSelect: (video: FileItem) => void,
+  isLoading?: boolean,
+  error?: string,
+  viewMoreHref?: string
+}) => (
+  <div className="mb-16 px-4 md:px-16">
+    <div className="flex items-center gap-3 mb-6">
+      <Icon className="w-6 h-6 text-[#E50914]" />
+      <h2 className="text-2xl font-medium text-white">
+        {title}
+      </h2>
+    </div>
+    {isLoading ? (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="aspect-[4/5] bg-white/10 rounded-md mb-3" />
+            <div className="h-4 bg-white/10 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-white/10 rounded w-1/2" />
+          </div>
+        ))}
+      </div>
+    ) : error ? (
+      <div className="bg-[#E50914]/10 rounded-lg p-6 text-center">
+        <InformationCircleIcon className="w-12 h-12 text-[#E50914] mx-auto mb-4" />
+        <p className="text-white/90 mb-2">Unable to load videos</p>
+        <p className="text-white/60 text-sm">{error}</p>
+      </div>
+    ) : videos.length === 0 ? (
+      <div className="bg-white/5 rounded-lg p-6 text-center">
+        <FilmIcon className="w-12 h-12 text-white/20 mx-auto mb-4" />
+        <p className="text-white/60">No videos available</p>
+      </div>
+    ) : (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {videos.map((video, index) => (
+          <NetflixCard 
+            key={video.id} 
+            video={video} 
+            onClick={() => onVideoSelect(video)}
+            priority={index < 2}
+          />
+        ))}
+      </div>
+    )}
+    {videos.length > 0 && viewMoreHref && (
+      <div className="flex justify-center mt-6">
+        <Link href={viewMoreHref} legacyBehavior>
+          <a className="inline-block bg-[#E50914] text-white px-6 py-2 rounded-lg font-medium hover:bg-[#b0060f] transition-colors">View More</a>
+        </Link>
+      </div>
+    )}
+  </div>
+);
 
-interface Download {
-  id: string;
-  url: string;
-  fileName: string;
-  fileSize: number;
-  itemId?: string;
-}
-
-const ITEMS_PER_PAGE = 50;
-
-export default function Home() {
-  const [files, setFiles] = useState<FileItem[]>([]);
+export default function HomePage() {
+  const [recentVideos, setRecentVideos] = useState<FileItem[]>([]);
+  const [popularVideos, setPopularVideos] = useState<FileItem[]>([]);
+  const [trendingVideos, setTrendingVideos] = useState<FileItem[]>([]);
+  const [featuredVideo, setFeaturedVideo] = useState<FileItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [storageLoading, setStorageLoading] = useState(false);
-  const [storage, setStorage] = useState<StorageInfo | null>(null);
-  const [error, setError] = useState('');
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [showStorage, setShowStorage] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [currentPath, setCurrentPath] = useState<FolderPath[]>([{ id: '0', name: 'Home' }]);
-  const [downloads, setDownloads] = useState<Download[]>([]);
-  
+  const [error, setError] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState<FileItem | null>(null);
   const { tokens, setToken } = useTokenStore();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setInitialLoading(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    fetchFiles(currentPath[currentPath.length - 1].id);
-    fetchStorage();
-  }, []);
-
-  // Extract numeric ID from combined ID (e.g., "Cloud Drive 1-52720379" -> "52720379")
-  const extractNumericId = (combinedId: string): string => {
-    const match = combinedId.match(/\d+$/);
-    return match ? match[0] : '0';
-  };
-  const fetchFiles = async (pid: string) => {
-    try {
+    async function fetchFiles() {
       setLoading(true);
-      setError('');
-      
-      // Extract just the numeric ID from the combined ID
-      const numericPid = extractNumericId(pid);
-      const params = new URLSearchParams({
-        search: searchQuery,
-        pid: numericPid // Use only the numeric ID
-      });
-      const response = await fetch(`/api/files?${params}`);
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch files');
+      setError("");
+      try {
+        // 1. Fetch all folders from root
+        const rootRes = await fetch(`/api/files?pid=0`);
+        const rootData = await rootRes.json();
+        if (!rootData.success) throw new Error(rootData.error || 'Failed to fetch root folders');
+        const folders = (rootData.data?.list || []).filter((file: FileItem) => file.url === undefined);
+        if (folders.length < 3) throw new Error('Not enough folders to assign categories');
+        // Find the first folder that has videos
+        let videoFolder = null;
+        let largestFolder = null;
+        let largestSize = 0;
+        let mostFilesFolder = null;
+        let mostFilesCount = 0;
+        for (const folder of folders) {
+          const res = await fetch(`/api/files?pid=${folder.id}&limit=50`);
+          const data = await res.json();
+          const videos = (data.data?.list || []).filter((file: FileItem) => file.type === 'video');
+          const totalSize = videos.reduce((sum: number, file: FileItem) => sum + (file.size || 0), 0);
+          if (videos.length > 0 && !videoFolder) {
+            videoFolder = folder;
+          }
+          if (videos.length > 0 && totalSize > largestSize) {
+            largestSize = totalSize;
+            largestFolder = folder;
+          }
+          if (videos.length > mostFilesCount) {
+            mostFilesCount = videos.length;
+            mostFilesFolder = folder;
+          }
+        }
+        if (!videoFolder) throw new Error('No folder with videos found');
+        if (!largestFolder) largestFolder = videoFolder;
+        if (!mostFilesFolder) mostFilesFolder = videoFolder;
+
+        // Fetch videos from the selected folders
+        const [trendingRes, recentRes, popularRes] = await Promise.all([
+          fetch(`/api/files?pid=${videoFolder.id}&limit=50`),
+          fetch(`/api/files?pid=${mostFilesFolder.id}&limit=50`),
+          fetch(`/api/files?pid=${largestFolder.id}&limit=50`),
+        ]);
+        const trendingData = await trendingRes.json();
+        const recentData = await recentRes.json();
+        const popularData = await popularRes.json();
+        const trendingVideosList = (trendingData.data?.list || []).filter((file: FileItem) => file.type === 'video');
+        const recentVideosList = (recentData.data?.list || []).filter((file: FileItem) => file.type === 'video');
+        const popularVideosList = (popularData.data?.list || []).filter((file: FileItem) => file.type === 'video');
+
+        // Sort videos for each category
+        const sortedByRating = [...trendingVideosList].sort((a, b) => ((b.rating || 0) - (a.rating || 0)) || ((b.views || 0) - (a.views || 0)));
+        const sortedByTime = [...recentVideosList].sort((a, b) => (b.utime || 0) - (a.utime || 0));
+        const sortedPopular = [...popularVideosList].sort((a, b) => ((b.views || 0) - (a.views || 0)) || ((b.utime || 0) - (a.utime || 0)));
+
+        // Set videos for each category
+        setTrendingVideos(sortedByRating.slice(0, VIDEOS_PER_SECTION));
+        setRecentVideos(sortedByTime.slice(0, VIDEOS_PER_SECTION));
+        setPopularVideos(sortedPopular.slice(0, VIDEOS_PER_SECTION));
+
+        // Set featured video
+        if (sortedByRating.length > 0) {
+          setFeaturedVideo(sortedByRating[0]);
+        }
+      } catch (e) {
+        console.error('Error fetching files:', e);
+        setError(e instanceof Error ? e.message : 'Failed to fetch files');
       }
-      setFiles(data.data.list);
-      
-      // Store tokens for each drive
-      if (data.data.tokens) {
-        Object.entries(data.data.tokens).forEach(([driveName, token]) => {
-          setToken(driveName, token as any);
-        });
-      }
-      
-      setStorage({
-        total: data.data.storage.total,
-        used: data.data.storage.used,
-        drives: data.data.storage.drives
-      });
-    } catch (err) {
-      console.error('Error fetching files:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch files');
-    } finally {
       setLoading(false);
     }
-  };
-
-  const fetchStorage = async () => {
-    try {
-      setStorageLoading(true);
-      setError('');
-      const response = await fetch('/api/storage');
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch storage info');
-      }
-      setStorage(data.data);
-    } catch (err) {
-      console.error('Error fetching storage:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch storage info');
-    } finally {
-      setStorageLoading(false);
-    }
-  };
-
-  const handleFileClick = async (file: FileItem) => {
-    if (file.type === 'dir') {
-      // Clear files first to prevent showing old files
-      setFiles([]);
-      setLoading(true);
-      
-      // Update path
-      setCurrentPath(prev => [...prev, { 
-        id: file.id.toString(), 
-        name: file.name,
-        driveToken: file.driveToken 
-      }]);
-      
-      // Fetch new files
-      await fetchFiles(file.id.toString());
-    } else {
-      setSelectedFile(file);
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleNavigate = async (index: number) => {
-    // Clear files first to prevent showing old files
-    setFiles([]);
-    setLoading(true);
-    
-    // Update path
-    const newPath = currentPath.slice(0, index + 1);
-    setCurrentPath(newPath);
-    
-    // Fetch new files
-    await fetchFiles(newPath[newPath.length - 1].id);
-  };
-
-  const filteredFiles = files.filter(file =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedFiles = filteredFiles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const handleDownload = (file: FileItem) => {
-    const newDownload = {
-      id: Math.random().toString(36).substring(7),
-      url: file.url || '',
-      fileName: file.name,
-      fileSize: file.size,
-      itemId: file.item_id
-    };
-    setDownloads(prev => [...prev, newDownload]);
-  };
-
-  const handleCloseDownload = (id: string) => {
-    setDownloads(prev => prev.filter(download => download.id !== id));
-  };
-
-  if (initialLoading) {
-    return <LoadingScreen />;
-  }
+    fetchFiles();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto py-3 sm:py-6 px-2 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="px-2 py-3 sm:px-0 sm:py-6 transition-all duration-300"
-        >
-          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 p-4 sm:p-6 rounded-2xl glass-effect">
-            <div className="w-full sm:w-auto">
-              <HeaderDropdown />
-              <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm sm:text-base pl-1">
-                Personal Cloud Storage
-              </p>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-end">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowStorage(!showStorage)}
-                className="p-2 sm:p-3 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-400/10 dark:to-purple-400/10 hover:from-blue-500/20 hover:to-purple-500/20 dark:hover:from-blue-400/20 dark:hover:to-purple-400/20 transition-all duration-200 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center"
-              >
-                <ChartBarIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-              </motion.button>
-              <SearchBar 
-                value={searchQuery} 
-                onChange={setSearchQuery} 
-                onOpenChange={setIsSearchOpen}
-                files={files}
-                onFileClick={handleFileClick}
+    <div className="bg-[#141414] min-h-screen">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#141414]/95 backdrop-blur-md shadow-lg">
+        <div className="px-4 md:px-16 py-4">
+          <h1 className="text-2xl font-bold text-[#E50914]">JemphStream</h1>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      {featuredVideo ? (
+        <div className="relative h-[85vh]">
+          <div className="absolute inset-0">
+            <div className="w-full h-full">
+              <VideoThumbnail 
+                url={featuredVideo.url} 
+                className="w-full h-full object-cover"
+                priority={true}
               />
-              <ThemeToggle />
             </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/50 to-transparent" />
           </div>
+          <div className="absolute bottom-0 left-0 right-0 px-4 md:px-16 pb-16 md:pb-24">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="max-w-2xl"
+            >
+              <h2 className="text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
+                {formatTitle(featuredVideo.name)}
+              </h2>
+              <div className="flex items-center gap-4 text-white/90 mb-8">
+                <span className="flex items-center gap-1.5 bg-[#E50914]/20 px-3 py-1 rounded-full">
+                  <StarIcon className="w-5 h-5 text-[#E50914]" />
+                  {featuredVideo.rating || 5}
+                </span>
+                <span className="bg-[#E50914]/20 px-3 py-1 rounded-full">{featuredVideo.duration || "1:30:00"}</span>
+                <span className="bg-[#E50914]/20 px-3 py-1 rounded-full">{featuredVideo.views?.toLocaleString() || '0'} views</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setSelectedVideo(featuredVideo)}
+                  className="bg-[#E50914] text-white px-8 py-3 rounded-lg flex items-center gap-2 hover:bg-[#E50914]/90 transition-colors"
+                >
+                  <PlayIcon className="w-6 h-6" />
+                  <span className="font-medium">Play Now</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      ) : loading ? (
+        <div className="h-[85vh] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#E50914]"></div>
+        </div>
+      ) : null}
 
-          <AnimatePresence>
-            {showStorage && (
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="mb-4 sm:mb-6 overflow-hidden"
-              >
-                {storageLoading ? (
-                  <div className="flex justify-center items-center p-8">
-                    <LoadingSpinner />
-                    <span className="ml-3 text-gray-600 dark:text-gray-400">
-                      Loading storage information...
-                    </span>
-                  </div>
-                ) : (
-                  <StorageDisplay
-                    used={storage?.used || 0}
-                    total={storage?.total || 0}
-                    drives={storage?.drives || {}}
-                  />
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+      {/* Main Content */}
+      <main className="relative z-10 pb-20">
+        <div className="mt-8">
+          <VideoSection 
+            title="Trending Now" 
+            videos={trendingVideos} 
+            icon={FireIcon}
+            onVideoSelect={setSelectedVideo}
+            isLoading={loading}
+            error={error}
+            viewMoreHref="/trending"
+          />
+          <AdPlaceholder />
+          <VideoSection 
+            title="Recently Added" 
+            videos={recentVideos} 
+            icon={ClockIcon}
+            onVideoSelect={setSelectedVideo}
+            isLoading={loading}
+            error={error}
+            viewMoreHref="/recent"
+          />
+          <AdPlaceholder />
+          <VideoSection 
+            title="Popular Videos" 
+            videos={popularVideos} 
+            icon={StarIcon}
+            onVideoSelect={setSelectedVideo}
+            isLoading={loading}
+            error={error}
+            viewMoreHref="/popular"
+          />
+        </div>
+      </main>
 
-          <Breadcrumb path={currentPath} onNavigate={handleNavigate} />
-
-          <motion.div
+      {/* Video Player Modal */}
+      <AnimatePresence>
+        {selectedVideo && (
+          <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="glass-effect shadow-lg rounded-2xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50"
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center backdrop-blur-sm"
           >
-            <div className="overflow-x-auto">
-              {loading ? (
-                <FileListSkeleton />
-              ) : (
-                <>
-                  <FileList 
-                    files={paginatedFiles} 
-                    onFileClick={handleFileClick}
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
-                  />
-                  <Pagination
-                    currentPage={currentPage}
-                    totalItems={filteredFiles.length}
-                    itemsPerPage={ITEMS_PER_PAGE}
-                    onPageChange={handlePageChange}
-                  />
-                </>
-              )}
-            </div>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-5xl mx-4"
+            >
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="absolute -top-12 right-0 text-white hover:text-[#E50914] transition-colors"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <MediaPlayer
+                url={selectedVideo.url}
+                type="video"
+                fileName={selectedVideo.name}
+              />
+            </motion.div>
           </motion.div>
-        </motion.div>
-      </div>
-
-      <FileInfoModal
-        file={selectedFile}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onDownload={handleDownload}
-      />
-      <AnimatePresence>
-        {downloads.map((download, index) => (
-          <DownloadProgress
-            key={download.id}
-            {...download}
-            onClose={() => handleCloseDownload(download.id)}
-            index={index}
-            totalDownloads={downloads.length}
-          />
-        ))}
+        )}
       </AnimatePresence>
     </div>
   );
