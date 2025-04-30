@@ -16,49 +16,47 @@ function App() {
     { 
       id: '1',
       name: 'Documents', 
-      type: 'folder', 
+      type: 'document',
       size: 0,
       ctime: Date.now(),
       utime: Date.now(),
-      pid: 0,
-      url: '/documents'
+      url: '/documents',
+      lastUpdated: new Date().toISOString()
     },
     { 
       id: '2',
       name: 'Images', 
-      type: 'folder', 
+      type: 'document',
       size: 0,
       ctime: Date.now(),
       utime: Date.now(),
-      pid: 0,
-      url: '/images'
+      url: '/images',
+      lastUpdated: new Date().toISOString()
     },
     { 
       id: '3',
       name: 'report.pdf', 
-      type: 'file', 
+      type: 'document',
       size: 2.5 * 1024 * 1024,
       ctime: Date.now(),
       utime: Date.now(),
-      pid: 0,
-      url: '/report.pdf'
+      url: '/report.pdf',
+      lastUpdated: new Date().toISOString()
     },
     { 
       id: '4',
       name: 'presentation.pptx', 
-      type: 'file', 
+      type: 'document',
       size: 5.1 * 1024 * 1024,
       ctime: Date.now(),
       utime: Date.now(),
-      pid: 0,
-      url: '/presentation.pptx'
+      url: '/presentation.pptx',
+      lastUpdated: new Date().toISOString()
     }
   ]);
 
   const handleFileClick = (file: FileItem) => {
-    if (file.type === 'folder') {
-      setCurrentPath([...currentPath, { id: file.id, name: file.name }]);
-    }
+    setCurrentPath([...currentPath, { id: file.id, name: file.name }]);
   };
 
   const handleNavigate = (index: number) => {
@@ -105,8 +103,6 @@ function App() {
           <FileList 
             files={files} 
             onFileClick={handleFileClick} 
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
           />
         </main>
       </div>
