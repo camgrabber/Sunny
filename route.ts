@@ -192,7 +192,7 @@ export async function GET(request: Request) {
       }
     });
 
-    allFiles.sort((a, b) => b.utime - a.utime);
+    allFiles.sort((a, b) => (b.utime || 0) - (a.utime || 0));
 
     return NextResponse.json({
       success: true,

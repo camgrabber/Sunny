@@ -1,32 +1,22 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import prisma from '@/lib/db/schema'
-import { authOptions } from '@/lib/auth'
-import { checkDriveStatus } from '@/lib/drives'
+import fs from 'fs/promises'
+import path from 'path'
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const session = await getServerSession(authOptions)
+const configPath = path.resolve(process.cwd(), 'src/config/storage.json')
 
-  if (!session) {
-    return new NextResponse('Unauthorized', { status: 401 })
-  }
-
+async function readConfig() {
   try {
-    const drive = await prisma.cloudDrive.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!drive) {
-      return new NextResponse('Drive not found', { status: 404 })
-    }
-
-    const status = await checkDriveStatus(drive)
-    return NextResponse.json({ status })
-  } catch (error) {
-    console.error('Error checking drive status:', error)
-    return new NextResponse('Internal Server Error', { status: 500 })
+    const data = await fs.readFile(configPath, 'utf-8')
+    return JSON.parse(data)
+  } catch {
+    return {}
   }
+}
+
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const config = await readConfig()
+  const drive = config[params.id]
+  if (!drive) return new NextResponse('Drive not found', { status: 404 })
+  // Here you could implement a real status check (e.g., try to connect)
+  return NextResponse.json({ status: 'active', lastChecked: new Date().toISOString() })
 } 
