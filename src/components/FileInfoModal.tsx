@@ -1,5 +1,5 @@
 import { Dialog, Transition } from '@headlessui/react';
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import { XMarkIcon, DocumentIcon, CloudArrowDownIcon, ShareIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileItem } from '@/types/file';
@@ -7,6 +7,7 @@ import { formatBytes, formatDate } from '@/utils/format';
 import { formatTitle } from '@/utils/formatters';
 import { DownloadProgress } from './DownloadProgress';
 import { MediaPlayer } from './MediaPlayer';
+import { getVideoUrl } from '@/lib/storage';
 
 interface FileInfoModalProps {
   file: FileItem | null;
@@ -26,6 +27,30 @@ interface Download {
 export function FileInfoModal({ file, isOpen, onClose, onDownload }: FileInfoModalProps) {
   const [downloads, setDownloads] = useState<Download[]>([]);
   const [copied, setCopied] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isLoadingUrl, setIsLoadingUrl] = useState(false);
+
+  useEffect(() => {
+    async function loadVideoUrl() {
+      if (file && (file.type === 'video' || file.type === 'audio')) {
+        setIsLoadingUrl(true);
+        try {
+          const url = await getVideoUrl(file.id);
+          setVideoUrl(url);
+        } catch (error) {
+          console.error('Error loading video URL:', error);
+        } finally {
+          setIsLoadingUrl(false);
+        }
+      }
+    }
+
+    if (isOpen) {
+      loadVideoUrl();
+    } else {
+      setVideoUrl(null);
+    }
+  }, [file, isOpen]);
 
   if (!file) return null;
 
@@ -119,13 +144,24 @@ export function FileInfoModal({ file, isOpen, onClose, onDownload }: FileInfoMod
                   </div>
 
                   {/* Media Player */}
-                  {isMediaFile && file.url && (
+                  {isMediaFile && (
                     <div className="mb-6">
-                      <MediaPlayer
-                        url={file.url}
-                        type={file.type as 'video' | 'audio'}
-                        fileName={file.name}
-                      />
+                      {isLoadingUrl ? (
+                        <div className="w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                        </div>
+                      ) : videoUrl ? (
+                        <MediaPlayer
+                          url={videoUrl}
+                          type={file.type as 'video' | 'audio'}
+                          fileName={file.name}
+                          thumbnail={file.thumbnail}
+                        />
+                      ) : (
+                        <div className="w-full aspect-video bg-gray-900 rounded-lg flex items-center justify-center">
+                          <p className="text-white">Failed to load media</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -138,8 +174,8 @@ export function FileInfoModal({ file, isOpen, onClose, onDownload }: FileInfoMod
                       {[
                         { label: 'Extension', value: fileExtension },
                         { label: 'Size', value: formatBytes(file.size) },
-                        { label: 'Created', value: formatDate(file.ctime) },
-                        { label: 'Modified', value: formatDate(file.utime) }
+                        { label: 'Created', value: file.ctime ? formatDate(file.ctime) : 'N/A' },
+                        { label: 'Modified', value: file.utime ? formatDate(file.utime) : 'N/A' }
                       ].map((item) => (
                         <div
                           key={item.label}

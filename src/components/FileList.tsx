@@ -3,7 +3,6 @@ import { DocumentIcon } from '@heroicons/react/24/outline';
 import { formatBytes, formatDate } from '../utils/format';
 import type { FileItem } from '../types/file';
 import { motion } from 'framer-motion';
-import { VideoThumbnail } from './VideoThumbnail';
 import { formatTitle } from '@/utils/formatters';
 import { AdPlaceholder } from './AdPlaceholder';
 
@@ -14,10 +13,15 @@ interface FileListProps {
 
 export function FileList({ files, onFileClick }: FileListProps) {
   const renderIcon = (file: FileItem) => {
-    if (file.type === 'video' && file.url) {
+    if (file.type === 'video' && file.thumbnail) {
       return (
-        <div className="w-full">
-          <VideoThumbnail url={file.url} className="w-full" />
+        <div className="w-full h-full relative">
+          <img
+            src={file.thumbnail}
+            alt={file.name}
+            className="w-full h-full object-cover rounded-lg"
+          />
+          <div className="absolute inset-0 bg-black/20 rounded-lg"></div>
         </div>
       );
     }
@@ -60,7 +64,7 @@ export function FileList({ files, onFileClick }: FileListProps) {
                       {formatBytes(file.size)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatDate(file.utime)}
+                      {file.utime ? formatDate(file.utime) : 'N/A'}
                     </p>
                   </div>
                 </div>

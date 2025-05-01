@@ -20,5 +20,14 @@
   "seoOgImage": "/og-image.png",
   "seoTwitterTitle": "My Video Streaming App",
   "seoTwitterDescription": "A Netflix-style video streaming platform.",
-  "seoTwitterImage": "/twitter-image.png"
+  "seoTwitterImage": "/twitter-image.png",
+  "settings": {
+    "siteName": "JemPH Cloud Storage",
+    "description": "Secure cloud storage solution",
+    "logo": "/logo.png",
+    "theme": "light",
+    "maxUploadSize": 104857600,
+    "allowedFileTypes": ["*"],
+    "maintenance": false
+  }
 } 

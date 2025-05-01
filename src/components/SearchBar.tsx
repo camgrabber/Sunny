@@ -172,7 +172,7 @@ export function SearchBar({ value, onChange, onOpenChange, files, onFileClick }:
                                   </p>
                                   <span className="text-gray-300 dark:text-gray-600">•</span>
                                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {formatDate(file.utime)}
+                                    {file.utime ? formatDate(file.utime) : 'N/A'}
                                   </p>
                                 </div>
                               </div>

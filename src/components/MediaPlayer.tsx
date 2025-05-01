@@ -25,12 +25,13 @@ interface MediaPlayerProps {
   url: string;
   type: 'video' | 'audio';
   fileName: string;
+  thumbnail?: string;
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const QUALITY_OPTIONS = ['Auto', '1080p', '720p', '480p', '360p'];
 
-export function MediaPlayer({ url, type, fileName }: MediaPlayerProps) {
+export function MediaPlayer({ url, type, fileName, thumbnail }: MediaPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -57,6 +58,8 @@ export function MediaPlayer({ url, type, fileName }: MediaPlayerProps) {
   const router = useRouter();
   const [likeCount, setLikeCount] = useState(Math.floor(Math.random() * 100));
   const [dislikeCount, setDislikeCount] = useState(Math.floor(Math.random() * 20));
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const media = mediaRef.current;
@@ -119,6 +122,16 @@ export function MediaPlayer({ url, type, fileName }: MediaPlayerProps) {
         clearTimeout(mouseTimeoutRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (mediaRef.current) {
+      mediaRef.current.addEventListener('loadeddata', () => setIsLoading(false));
+      mediaRef.current.addEventListener('error', () => {
+        setError('Failed to load media');
+        setIsLoading(false);
+      });
+    }
   }, []);
 
   const togglePlay = () => {
@@ -317,378 +330,55 @@ export function MediaPlayer({ url, type, fileName }: MediaPlayerProps) {
     setCommentInput('');
   };
 
-  return (
-    <div className="relative w-full">
-      <BannerAdPlaceholder />
-      <motion.div
-        ref={playerRef}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className={`rounded-xl overflow-hidden bg-black relative group ${!isMouseMoving && isPlaying ? 'cursor-none' : ''}`}
-      >
-        {/* Title at the top */}
-        <AnimatePresence>
-          {isMouseMoving && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto"
-            >
-              <div className="text-white text-lg font-semibold truncate max-w-[60vw] drop-shadow-lg">
-                {formatTitle(fileName)}
-              </div>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="text-white/80 hover:text-[#E50914] transition-colors flex items-center"
-                title="Settings"
-              >
-                <Cog6ToothIcon className="w-6 h-6" />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {type === 'video' ? (
-          <video
-            ref={mediaRef as React.RefObject<HTMLVideoElement>}
-            src={url}
-            className="w-full aspect-video"
-            onClick={togglePlay}
-            playsInline
-            controlsList="nodownload nofullscreen noremoteplayback"
-            disablePictureInPicture
-            disableRemotePlayback
-          />
-        ) : (
-          <div>
-            <audio
-              ref={mediaRef as React.RefObject<HTMLAudioElement>}
-              src={url}
-              className="hidden"
-            />
-            <div className="aspect-[3/1] bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <div className="text-white text-center p-4">
-                <h3 className="text-lg font-medium truncate max-w-xs">
-                  {fileName}
-                </h3>
-                <p className="text-sm opacity-75">Audio Player</p>
-              </div>
-            </div>
+  if (type === 'video') {
+    return (
+      <div className="relative w-full aspect-video bg-gray-900 rounded-lg overflow-hidden">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           </div>
         )}
-
-        {/* Controls overlay */}
-        <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 transition-opacity duration-300 ${isMouseMoving || !isPlaying ? 'opacity-100' : 'opacity-0'}`}>
-          {/* Progress bar */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-white text-xs">
-              {formatTime(currentTime)}
-            </span>
-            <div className="flex-1 relative group/progress">
-              <input
-                type="range"
-                min="0"
-                max={duration || 0}
-                value={currentTime}
-                onChange={handleSeek}
-                className="w-full h-1 bg-gray-600 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#E50914] hover:[&::-webkit-slider-thumb]:scale-110 transition-transform"
-              />
-              <div 
-                className="absolute bottom-0 left-0 h-1 bg-[#E50914] rounded-full"
-                style={{ width: `${(currentTime / duration) * 100}%` }}
-              />
-              <div 
-                className="absolute bottom-0 left-0 h-1 bg-[#E50914]/50 rounded-full group-hover/progress:scale-y-150 transition-transform origin-bottom"
-                style={{ width: `${(currentTime / duration) * 100}%` }}
-              />
-            </div>
-            <span className="text-white text-xs">
-              {formatTime(duration)}
-            </span>
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+            <p className="text-white">{error}</p>
           </div>
-
-          {/* Control buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={togglePlay}
-                className="text-white hover:text-[#E50914] transition-colors"
-              >
-                {isPlaying ? (
-                  <PauseIcon className="w-6 h-6" />
-                ) : (
-                  <PlayIcon className="w-6 h-6" />
-                )}
-              </motion.button>
-
-              <div className="relative group/volume">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={toggleMute}
-                  onMouseEnter={() => setShowVolumeSlider(true)}
-                  className="text-white hover:text-[#E50914] transition-colors"
-                >
-                  {isMuted ? (
-                    <SpeakerXMarkIcon className="w-6 h-6" />
-                  ) : (
-                    <SpeakerWaveIcon className="w-6 h-6" />
-                  )}
-                </motion.button>
-                <AnimatePresence>
-                  {showVolumeSlider && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      onMouseLeave={() => setShowVolumeSlider(false)}
-                      className="absolute left-0 bottom-full mb-2 p-2 bg-black/80 rounded-lg"
-                    >
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={volume}
-                        onChange={handleVolumeChange}
-                        className="w-24 h-1 bg-gray-600 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#E50914]"
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="relative group/settings">
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setShowSettings(!showSettings)}
-                  className="text-white hover:text-[#E50914] transition-colors"
-                >
-                  <Cog6ToothIcon className="w-6 h-6" />
-                </motion.button>
-                <AnimatePresence>
-                  {showSettings && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute left-0 bottom-full mb-2 p-2 bg-black/80 rounded-lg min-w-[200px]"
-                    >
-                      <div className="space-y-2">
-                        <div className="text-white text-sm font-medium mb-2">Playback Speed</div>
-                        <div className="flex flex-wrap gap-2">
-                          {PLAYBACK_SPEEDS.map((speed) => (
-                            <button
-                              key={speed}
-                              onClick={() => changePlaybackSpeed(speed)}
-                              className={`px-2 py-1 rounded text-sm ${
-                                playbackSpeed === speed
-                                  ? 'bg-[#E50914] text-white'
-                                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-                              }`}
-                            >
-                              {speed}x
-                            </button>
-                          ))}
-                        </div>
-                        <div className="text-white text-sm font-medium mb-2 mt-4">Quality</div>
-                        <div className="flex flex-wrap gap-2">
-                          {QUALITY_OPTIONS.map((quality) => (
-                            <button
-                              key={quality}
-                              onClick={() => changeQuality(quality)}
-                              className={`px-2 py-1 rounded text-sm ${
-                                selectedQuality === quality
-                                  ? 'bg-[#E50914] text-white'
-                                  : 'bg-white/10 text-white/70 hover:bg-white/20'
-                              }`}
-                            >
-                              {quality}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {subtitleTracks.length > 0 && (
-                <div className="relative group/subtitles">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="text-white hover:text-[#E50914] transition-colors"
-                  >
-                    <LanguageIcon className="w-6 h-6" />
-                  </motion.button>
-                  <div className="absolute right-0 bottom-full mb-2 p-2 bg-black/80 rounded-lg min-w-[150px] opacity-0 group-hover/subtitles:opacity-100 transition-opacity">
-                    {subtitleTracks.map((track, index) => (
-                      <button
-                        key={index}
-                        onClick={() => toggleSubtitleTrack(index)}
-                        className={`block w-full text-left px-2 py-1 rounded text-sm ${
-                          currentSubtitleTrack === index
-                            ? 'bg-[#E50914] text-white'
-                            : 'text-white/70 hover:bg-white/10'
-                        }`}
-                      >
-                        {track.label || `Subtitle ${index + 1}`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleFullscreen}
-                className="text-white hover:text-[#E50914] transition-colors"
-              >
-                {isFullscreen ? (
-                  <ArrowsPointingInIcon className="w-6 h-6" />
-                ) : (
-                  <ArrowsPointingOutIcon className="w-6 h-6" />
-                )}
-              </motion.button>
-            </div>
-          </div>
-        </div>
-
-        {/* Keyboard shortcuts hint */}
-        <AnimatePresence>
-          {isMouseMoving && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute top-4 right-4 bg-black/80 text-white/70 text-xs p-2 rounded-lg"
-            >
-              <div className="flex items-center gap-2">
-                <span>Space</span>
-                <span>Play/Pause</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>M</span>
-                <span>Mute</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>F</span>
-                <span>Fullscreen</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Social Interaction Bar */}
-      <div className="max-w-3xl mx-auto mt-6 bg-[#181818] rounded-lg shadow-lg">
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleLike}
-                  className={`group flex items-center gap-2 hover:bg-white/5 rounded-full px-4 py-2 transition-colors ${liked ? 'text-[#E50914]' : 'text-white/80'}`}
-                >
-                  <HandThumbUpIcon className={`w-6 h-6 transition-transform group-hover:scale-110 ${liked ? 'fill-current' : ''}`} />
-                  <span className="text-sm font-medium">{likeCount.toLocaleString()}</span>
-                </button>
-                <button
-                  onClick={handleDislike}
-                  className={`group flex items-center gap-2 hover:bg-white/5 rounded-full px-4 py-2 transition-colors ${disliked ? 'text-[#E50914]' : 'text-white/80'}`}
-                >
-                  <HandThumbDownIcon className={`w-6 h-6 transition-transform group-hover:scale-110 ${disliked ? 'fill-current' : ''}`} />
-                  <span className="text-sm font-medium">{dislikeCount.toLocaleString()}</span>
-                </button>
-              </div>
-              <div className="h-8 w-px bg-white/10"></div>
-              <div className="relative">
-                <button
-                  onClick={handleShare}
-                  className="group flex items-center gap-2 hover:bg-white/5 rounded-full px-4 py-2 text-white/80 transition-colors"
-                >
-                  <ShareIcon className="w-6 h-6 transition-transform group-hover:scale-110" />
-                  <span className="text-sm font-medium">Share</span>
-                </button>
-                {showShare && (
-                  <div className="absolute top-full left-0 mt-2 bg-[#282828] text-white text-sm px-6 py-4 rounded-lg shadow-xl z-30 min-w-[300px]">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-medium">Share this video</span>
-                      <button onClick={() => setShowShare(false)} className="text-white/60 hover:text-white">×</button>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/40 rounded px-3 py-2 mb-4">
-                      <input
-                        type="text"
-                        readOnly
-                        value={window.location.href}
-                        className="flex-1 bg-transparent text-white/80 text-sm outline-none"
-                      />
-                      <button
-                        onClick={handleShare}
-                        className="text-[#E50914] text-sm font-medium hover:text-[#b0060f]"
-                      >
-                        {copied ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="text-white/60 text-sm">
-              {comments.length} {comments.length === 1 ? 'comment' : 'comments'}
-            </div>
-          </div>
-        </div>
-
-        {/* Comments Section */}
-        <div className="p-6">
-          <form onSubmit={handleAddComment} className="flex gap-2 mb-6">
-            <input
-              type="text"
-              value={commentInput}
-              onChange={e => setCommentInput(e.target.value)}
-              className="flex-1 rounded px-4 py-3 bg-black/60 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#E50914]/50"
-              placeholder="Add a comment..."
-            />
-            <button
-              type="submit"
-              className="bg-[#E50914] text-white px-6 py-2 rounded font-medium hover:bg-[#b0060f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!commentInput.trim()}
-            >
-              Comment
-            </button>
-          </form>
-          <div className="space-y-4">
-            {comments.length === 0 ? (
-              <div className="text-white/50 text-center py-8">No comments yet. Be the first to comment!</div>
-            ) : (
-              comments.map((c, i) => (
-                <div key={i} className="group bg-black/20 hover:bg-black/40 rounded-lg p-4 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-[#E50914]/20 flex items-center justify-center">
-                      <span className="text-[#E50914] text-sm font-medium">
-                        {c.text[0]?.toUpperCase() || '?'}
-                      </span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-white/90 text-sm mb-1">{c.text}</div>
-                      <div className="text-white/40 text-xs">{c.date}</div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        )}
+        <video
+          ref={mediaRef as React.RefObject<HTMLVideoElement>}
+          className="w-full h-full"
+          controls
+          preload="metadata"
+          poster={thumbnail}
+          playsInline
+        >
+          <source src={url} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
       </div>
-      <BannerAdPlaceholder />
+    );
+  }
+
+  return (
+    <div className="relative w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/50">
+          <p className="text-red-500">{error}</p>
+        </div>
+      )}
+      <audio
+        ref={mediaRef as React.RefObject<HTMLAudioElement>}
+        className="w-full"
+        controls
+        preload="metadata"
+      >
+        <source src={url} type="audio/mpeg" />
+        Your browser does not support the audio element.
+      </audio>
     </div>
   );
 }

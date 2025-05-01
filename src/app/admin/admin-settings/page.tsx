@@ -9,6 +9,8 @@ interface AdminUser {
   lastLogin: string
 }
 
+type UserRole = 'admin' | 'superadmin';
+
 export default function AdminSettings() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -18,7 +20,7 @@ export default function AdminSettings() {
   const [newUser, setNewUser] = useState({
     username: '',
     password: '',
-    role: 'admin' as const,
+    role: 'admin' as UserRole,
   })
 
   useEffect(() => {
@@ -225,7 +227,7 @@ export default function AdminSettings() {
                         name="role"
                         id="role"
                         value={newUser.role}
-                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'admin' | 'superadmin' })}
+                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                         className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                       >
                         <option value="admin">Admin</option>
@@ -291,7 +293,7 @@ export default function AdminSettings() {
                         name="edit-role"
                         id="edit-role"
                         value={editingUser.role}
-                        onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as 'admin' | 'superadmin' })}
+                        onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
                         className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                       >
                         <option value="admin">Admin</option>
